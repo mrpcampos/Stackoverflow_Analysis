@@ -1,24 +1,24 @@
 import pandas as pd
 import multiprocessing
-from random import choice
+from random import shuffle
 
 
 def desordenar_respostas(row, colunas_respostas, num_respostas):
-    columns_map = {}
-    new_row = pd.Series()
-    rg = list(range(0, num_respostas))
-    for j in range(0, num_respostas):
-        nova_posicao = choice(rg)
-        rg.remove(nova_posicao)
 
+    columns_map = {}
+    nova_ordem = list(range(0, num_respostas))
+    shuffle(nova_ordem)
+
+    chuncks_divididos = []
+    for j in range(0, num_respostas):
+        chuncks_divididos.append(colunas_respostas[j*num_respostas:(j+1)*num_respostas])
+
+    for chunck in chuncks_divididos:
         nome_colunas_da_vez = colunas_respostas[-num_respostas:]
         colunas_da_vez = row[nome_colunas_da_vez]
         columns_map[j] = nome_colunas_da_vez
 
         if colunas_da_vez[nome_colunas_da_vez[0]] == row['id_pergunta']:
-            row['id_pergunta'] = j
-        colunas_da_vez[nome_colunas_da_vez[0]] = j
-
 
 
 def filter_num_questions(num_respostas: int, df: pd.DataFrame):
@@ -30,10 +30,13 @@ def filter_num_questions(num_respostas: int, df: pd.DataFrame):
 
     colunas_importantes.extend(colunas_respostas)
 
-    pool = multiprocessing.Pool(4)
+    df_final = df[colunas_importantes]
 
-    pool.map(desordenar_respostas, df[colunas_importantes].iterrows())
-    df_final = df[colunas_importantes].apply(lambda row: desordenar_respostas(row, colunas_respostas, num_respostas), axis=1)
+    # Essa parte iteraria sobre os dados para randomizar a ordem das respostas, pois no momento elas estão ordenadas por
+    # mais votos, logo se o modelo chutar sempre a primeira vai acertar na maior parte das vezes
+
+    # for row in df.iterrows():
+    #     desordenar_respostas(row, colunas_respostas, num_respostas)
 
     print("Salvando exemplo com {} repostas para csv...".format(num_respostas))
     df_final.to_csv('perguntas_2019 - {} respostas - Randomizado.csv'.format(num_respostas))
