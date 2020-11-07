@@ -1,24 +1,29 @@
 import pandas as pd
 import multiprocessing
 from random import shuffle
+import numpy as np
+from functools import partial
 
 
-def desordenar_respostas(row, colunas_respostas, num_respostas):
+def desordenar_respostas(row, colunas_id_resposta, num_respostas):
+    # Código para trocar a ordem das perguntas, incompleto
+    #
+    # chuncks_divididos = []
+    # for resposta in range(0, num_respostas):
+    #     chuncks_divididos.append(row[colunas_respostas[resposta * num_respostas:(resposta + 1) * num_respostas]])
+    # shuffle(chuncks_divididos)
+    #
+    # counter = 0
+    # for chunck in chuncks_divididos:
+    #     if chunck[0] == row[1]:
+    #         row[1] = counter
+    #     row[counter * num_respostas:num_respostas * (counter + 1)] = chunck[counter]
+    #     counter += 1
 
-    columns_map = {}
-    nova_ordem = list(range(0, num_respostas))
-    shuffle(nova_ordem)
-
-    chuncks_divididos = []
-    for j in range(0, num_respostas):
-        chuncks_divididos.append(colunas_respostas[j*num_respostas:(j+1)*num_respostas])
-
-    for chunck in chuncks_divididos:
-        nome_colunas_da_vez = colunas_respostas[-num_respostas:]
-        colunas_da_vez = row[nome_colunas_da_vez]
-        columns_map[j] = nome_colunas_da_vez
-
-        if colunas_da_vez[nome_colunas_da_vez[0]] == row['id_pergunta']:
+    # define qual das respostas (de 0 a num_respostas) é a melhor
+    conditions = [row['target'] == row[id_resposta] for id_resposta in colunas_id_resposta]
+    r = np.array(range(0, len(colunas_id_resposta)))[conditions]
+    return r[0] if r.size == 1 else -1
 
 
 def filter_num_questions(num_respostas: int, df: pd.DataFrame):
@@ -30,16 +35,13 @@ def filter_num_questions(num_respostas: int, df: pd.DataFrame):
 
     colunas_importantes.extend(colunas_respostas)
 
-    df_final = df[colunas_importantes]
+    df_filtrado = df[colunas_importantes]
 
-    # Essa parte iteraria sobre os dados para randomizar a ordem das respostas, pois no momento elas estão ordenadas por
-    # mais votos, logo se o modelo chutar sempre a primeira vai acertar na maior parte das vezes
-
-    # for row in df.iterrows():
-    #     desordenar_respostas(row, colunas_respostas, num_respostas)
+    colunas_id_resposta = list(filter(lambda s: "id_resposta" in s, colunas_respostas))
+    df_final = df_filtrado.apply(desordenar_respostas, axis=1, args=(colunas_id_resposta, ))
 
     print("Salvando exemplo com {} repostas para csv...".format(num_respostas))
-    df_final.to_csv('perguntas_2019 - {} respostas - Randomizado.csv'.format(num_respostas))
+    df_final.to_csv('perguntas_2019 - {} respostas - Pronto para uso (com bias).csv'.format(num_respostas))
     print("Csv com {} respostas salvo!".format(num_respostas))
 
 

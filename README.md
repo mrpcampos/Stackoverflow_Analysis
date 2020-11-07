@@ -11,4 +11,14 @@ Esse projeto conta com o BigQueryHelper, para facilitar a extração de dados, v
 
 O seguinte post no Kaggle mostra um pouco de como utilizar essa biblioteca com o stackoverflow: https://www.kaggle.com/paultimothymooney/how-to-query-the-stack-overflow-data
 
-Nesse link tambem é possível utilizar um notebook virtual para fazer as pesquisas, caso queira algo mais dinâmico ou esteja com problemas para preparar o ambiente.  
+Nesse link tambem é possível utilizar um notebook virtual para fazer as pesquisas, caso queira algo mais dinâmico ou esteja com problemas para preparar o ambiente.
+
+# Entendendo a branch melhor_resposta
+
+Essa branch esta dividida em três partes:
+
+1. A primeira esta no arquivo data_catcher.py. Ela mostra a query utilizada para extrair os dados diretamente do banco de dados.
+2. A segunda está no arquivo data_filters.py. Lá os dados são organizados e a variável alvo definida.
+3. A terceira ocorre no arquivo neural_network.ipynb. Essa parte é a que sofrerá a maior parte das atualizações, ela contem a criação e teste de modelos de rede neural, assim como algumas operações básicas de preparação de dados.
+
+A partir desse commit (contando com esse) tudo que for modificado será descrito, acompanhe os commits para detalhes. (olhar mensagens de commit e comentários próximos as alterações feitas)
