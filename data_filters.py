@@ -1,29 +1,39 @@
 import pandas as pd
-import multiprocessing
+from multiprocessing import Pool, Process
 from random import shuffle
 import numpy as np
 from functools import partial
 
 
-def desordenar_respostas(row, colunas_id_resposta, num_respostas):
-    # Código para trocar a ordem das perguntas, incompleto
-    #
-    # chuncks_divididos = []
-    # for resposta in range(0, num_respostas):
-    #     chuncks_divididos.append(row[colunas_respostas[resposta * num_respostas:(resposta + 1) * num_respostas]])
-    # shuffle(chuncks_divididos)
-    #
-    # counter = 0
-    # for chunck in chuncks_divididos:
-    #     if chunck[0] == row[1]:
-    #         row[1] = counter
-    #     row[counter * num_respostas:num_respostas * (counter + 1)] = chunck[counter]
-    #     counter += 1
+def parallelize(data, func, num_of_processes=8):
+    data_split = np.array_split(data, num_of_processes)
+    pool = Pool(num_of_processes)
+    data = pd.concat(pool.map(func, data_split))
+    pool.close()
+    pool.join()
+    return data
 
-    # define qual das respostas (de 0 a num_respostas) é a melhor
-    conditions = [row['target'] == row[id_resposta] for id_resposta in colunas_id_resposta]
-    r = np.array(range(0, len(colunas_id_resposta)))[conditions]
-    return r[0] if r.size == 1 else -1
+
+def run_on_subset(func, data_subset):
+    return data_subset.apply(func, axis=1)
+
+
+def parallelize_on_rows(data, func, num_of_processes=8):
+    return parallelize(data, partial(run_on_subset, func), num_of_processes)
+
+
+def desordenar_respostas(row, num_respostas):
+    temp = row[2:].copy()
+    nova_ordem = list(range(0, num_respostas))
+    shuffle(nova_ordem)
+    for counter in range(0, num_respostas):
+        row[2 + (counter * 6):2 + ((counter + 1) * 6)] = temp[nova_ordem[counter] * 6:(nova_ordem[counter] + 1) * 6]
+        if row['target'] == row['id_resposta' + str(counter)]:
+            row['alvo'] = counter
+    if 'alvo' not in row:
+        row['alvo'] = -1
+
+    return row
 
 
 def filter_num_questions(num_respostas: int, df: pd.DataFrame):
@@ -37,16 +47,17 @@ def filter_num_questions(num_respostas: int, df: pd.DataFrame):
 
     df_filtrado = df[colunas_importantes]
 
-    colunas_id_resposta = list(filter(lambda s: "id_resposta" in s, colunas_respostas))
-    df_final = df_filtrado.apply(desordenar_respostas, axis=1, args=(colunas_id_resposta, ))
+    df_final = parallelize_on_rows(df_filtrado, partial(desordenar_respostas, num_respostas=num_respostas), 4)
+    # df_filtrado.apply(desordenar_respostas, axis=1,
+    #                              args=(colunas_respostas, num_respostas))
 
     print("Salvando exemplo com {} repostas para csv...".format(num_respostas))
-    df_final.to_csv('perguntas_2019 - {} respostas - Pronto para uso (com bias).csv'.format(num_respostas))
+    df_final.to_csv('perguntas_2019 - {} respostas - Pronto para uso (sem bias).csv'.format(num_respostas), index=False)
     print("Csv com {} respostas salvo!".format(num_respostas))
 
 
 if __name__ == "__main__":
-    perguntas_2019 = pd.read_csv("perguntas_2019.csv")
+    perguntas_2019 = pd.read_csv("perguntas_2019.csv", index_col=[0])
 
     temp = perguntas_2019.groupby(['id_pergunta', 'target']).cumcount()
 
@@ -56,8 +67,9 @@ if __name__ == "__main__":
 
     threads = []
     for i in range(3, 6):
-        t = multiprocessing.Process(group=None, target=filter_num_questions, args=(i, df1))
-        threads.append(t)
-        t.start()
+        filter_num_questions(i, df1)
+        # t = Process(group=None, target=filter_num_questions, args=(i, df1))
+        # threads.append(t)
+        # t.start()
 
     [t.join() for t in threads]
