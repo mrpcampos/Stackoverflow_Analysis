@@ -27,7 +27,7 @@ def desordenar_respostas(row, num_respostas):
     nova_ordem = list(range(0, num_respostas))
     shuffle(nova_ordem)
     for counter in range(0, num_respostas):
-        row[2 + (counter * 6):2 + ((counter + 1) * 6)] = temp[nova_ordem[counter] * 6:(nova_ordem[counter] + 1) * 6]
+        row[2 + (counter * 5):2 + ((counter + 1) * 5)] = temp[nova_ordem[counter] * 5:(nova_ordem[counter] + 1) * 5]
         if row['target'] == row['id_resposta' + str(counter)]:
             row['alvo'] = counter
     if 'alvo' not in row:
@@ -39,8 +39,9 @@ def desordenar_respostas(row, num_respostas):
 def filter_num_questions(num_respostas: int, df: pd.DataFrame):
     print("começando thread para csv com {} respostas".format(num_respostas))
     colunas_importantes = ['id_pergunta', 'target']
+    # Atualizado para desconsiderar a coluna 'tem_site_proprio', que não existe mais
     colunas_respostas = [r + str(j) for j in range(0, num_respostas) for r in
-                         ['id_resposta', 'pontos_resposta', 'tempo_resposta', 'user_reputation', 'tem_site_proprio',
+                         ['id_resposta', 'pontos_resposta', 'tempo_resposta', 'user_reputation',
                           'maestria_tags']]
 
     colunas_importantes.extend(colunas_respostas)
@@ -48,28 +49,21 @@ def filter_num_questions(num_respostas: int, df: pd.DataFrame):
     df_filtrado = df[colunas_importantes]
 
     df_final = parallelize_on_rows(df_filtrado, partial(desordenar_respostas, num_respostas=num_respostas), 4)
-    # df_filtrado.apply(desordenar_respostas, axis=1,
-    #                              args=(colunas_respostas, num_respostas))
 
     print("Salvando exemplo com {} repostas para csv...".format(num_respostas))
-    df_final.to_csv('perguntas_2019 - {} respostas - Pronto para uso (sem bias).csv'.format(num_respostas), index=False)
+    df_final.to_csv('Perguntas 2018+ - {} respostas.csv'.format(num_respostas), index=False)
     print("Csv com {} respostas salvo!".format(num_respostas))
 
 
 if __name__ == "__main__":
-    perguntas_2019 = pd.read_csv("perguntas_2019.csv", index_col=[0])
+    # Alterado para pegar o novo arquivo gerado
+    perguntas = pd.read_csv("perguntas_2018+.csv", index_col=[0])
 
-    temp = perguntas_2019.groupby(['id_pergunta', 'target']).cumcount()
+    temp = perguntas.groupby(['id_pergunta', 'target']).cumcount()
 
-    df1 = perguntas_2019.set_index(['id_pergunta', 'target', temp]).unstack().sort_index(level=1, axis=1)
+    df1 = perguntas.set_index(['id_pergunta', 'target', temp]).unstack().sort_index(level=1, axis=1)
     df1.columns = [f'{x}{y}' for x, y in df1.columns]
     df1 = df1.reset_index()
 
-    threads = []
     for i in range(3, 6):
         filter_num_questions(i, df1)
-        # t = Process(group=None, target=filter_num_questions, args=(i, df1))
-        # threads.append(t)
-        # t.start()
-
-    [t.join() for t in threads]
